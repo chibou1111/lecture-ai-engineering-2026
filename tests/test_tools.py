@@ -60,6 +60,36 @@ def test_make_quiz_reports_when_lecture_has_no_terms():
     assert "1, 2, 3, 5" in message
 
 
+def test_save_learning_log_appends_entries_to_a_daily_file(tmp_path, monkeypatch):
+    log_dir = tmp_path / "learning_log"
+    monkeypatch.setattr(tools, "LEARNING_LOG_DIR", log_dir)
+
+    first_result = tools.save_learning_log("今日学んだこと")
+    second_result = tools.save_learning_log("新しい気づき")
+
+    log_files = list(log_dir.glob("*.md"))
+    assert len(log_files) == 1
+    content = log_files[0].read_text(encoding="utf-8")
+    assert "今日学んだこと" in content
+    assert "新しい気づき" in content
+    assert first_result == second_result
+    assert first_result.startswith("学習ログを learning_log/")
+
+
+def test_save_learning_log_rejects_empty_entries(tmp_path, monkeypatch):
+    log_dir = tmp_path / "learning_log"
+    monkeypatch.setattr(tools, "LEARNING_LOG_DIR", log_dir)
+
+    try:
+        tools.save_learning_log(" \n ")
+    except ValueError as exc:
+        assert "空" in str(exc)
+    else:
+        raise AssertionError("空の学習ログは保存できない")
+
+    assert not log_dir.exists()
+
+
 def test_default_question_of_lecture1_is_answerable_from_glossary():
     """第1回の既定の質問（app.ask）は、第3回のエージェントが用語集で正しく答えられること。"""
     from app.ask import DEFAULT_QUESTION
